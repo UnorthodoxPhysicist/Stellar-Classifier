@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stellar Classifier — Live Prediction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1026; --bg2:#0D1330; --panel:#141C3D; --panel2:#1A2450; --line:#2A3463;
+  --ink:#EAEEFB; --muted:#939CC6; --faint:#6A739E;
+  --teal:#4FD1C5; --violet:#B794F4; --gold:#F5C453; --bad:#F47C7C; --good:#5BD97E;
+  --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1100px 560px at 85% -10%, #1B2860 0%, transparent 60%),
+    radial-gradient(900px 500px at -10% 15%, #14204E 0%, transparent 55%),
+    var(--bg);
+  color:var(--ink); font-family:Inter,system-ui,sans-serif; font-size:15px; line-height:1.55;
+  min-height:100vh;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px 60px}
+header{position:relative;padding:42px 0 8px}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+h1{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:clamp(26px,4vw,38px);letter-spacing:-.015em;line-height:1.1}
+h1 .dim{color:var(--muted);font-weight:500}
+.sub{color:var(--muted);margin:10px 0 26px;max-width:720px}
+.sub b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.panel{background:linear-gradient(180deg,rgba(26,36,80,.55),rgba(20,28,61,.9));border:1px solid var(--line);border-radius:var(--r);padding:22px}
+.panel h2{font-family:"Space Grotesk",sans-serif;font-size:16.5px;font-weight:700;margin-bottom:4px}
+.panel .note{font-size:13px;color:var(--muted);margin-bottom:16px}
+/* inputs */
+.frow{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center;margin-bottom:11px}
+.frow label{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--muted)}
+input[type=number]{
+  width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:9px;color:var(--ink);
+  font-family:"JetBrains Mono",monospace;font-size:14px;padding:9px 12px;
+}
+input[type=number]:focus-visible{outline:2px solid var(--gold);border-color:transparent}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 16px}
+.presets button,.btn{
+  appearance:none;border:1px solid var(--line);background:var(--bg2);color:var(--ink);
+  font:inherit;font-size:13px;padding:8px 14px;border-radius:999px;cursor:pointer;transition:border-color .15s;
+}
+.presets button:hover,.btn:hover{border-color:var(--gold)}
+.presets button:focus-visible,.btn:focus-visible,.cta:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.cta{
+  appearance:none;border:0;width:100%;margin-top:8px;cursor:pointer;border-radius:11px;
+  background:linear-gradient(135deg,#F5C453,#E8A93E);color:#1A1503;
+  font:inherit;font-weight:600;font-size:15px;padding:13px;transition:filter .15s;
+}
+.cta:hover{filter:brightness(1.06)}
+.cta:disabled{opacity:.55;cursor:wait}
+.divider{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin:20px 0 14px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.sdssrow{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+.sdssrow .frow{grid-template-columns:1fr;gap:5px;margin:0}
+.hint{font-size:12px;color:var(--faint);margin-top:10px}
+.hint a{color:var(--muted)}
+/* verdict */
+.verdict{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:24px;text-align:center}
+.what{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.cls{font-family:"Space Grotesk",sans-serif;font-size:48px;font-weight:700;letter-spacing:-.02em;margin:6px 0 2px;min-height:58px}
+.conf{font-size:13px;color:var(--muted);margin-bottom:18px;min-height:20px}
+.probrow{display:grid;grid-template-columns:72px 1fr 56px;gap:10px;align-items:center;margin-bottom:10px;text-align:left}
+.probrow .nm{font-size:12.5px;color:var(--muted);font-family:"JetBrains Mono",monospace}
+.probrow .pv{font-family:"JetBrains Mono",monospace;font-size:12.5px;text-align:right}
+.track{height:9px;background:#101737;border-radius:6px;overflow:hidden}
+.fill{height:100%;border-radius:6px;width:0;transition:width .35s ease}
+.compare{margin-top:16px;border-radius:11px;padding:12px 14px;font-size:13.5px;display:none}
+.compare.match{display:block;background:rgba(91,217,126,.08);border:1px solid rgba(91,217,126,.35);color:#C9EFD4}
+.compare.diff{display:block;background:rgba(244,124,124,.08);border:1px solid rgba(244,124,124,.35);color:#F3CFCF}
+.error{margin-top:14px;border-radius:11px;padding:12px 14px;font-size:13.5px;display:none;background:rgba(244,124,124,.08);border:1px solid rgba(244,124,124,.4);color:#F3CFCF}
+.meta{margin-top:16px;font-size:12.5px;color:var(--faint)}
+footer{margin-top:40px;color:var(--faint);font-size:12.5px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Capstone Project · Live Model Serving</div>
+  <h1>Stellar Classifier <span class="dim">— Random Forest, served live</span></h1>
+  <p class="sub">The trained Random Forest (<b>{{ accuracy }}</b> test accuracy, macro F1 <b>{{ f1 }}</b>)
+  runs in a Python backend. Enter an object's photometry and redshift — or pull a real object
+  straight from the Sloan Digital Sky Survey — and classify it on the spot.</p>
+</header>
+
+<div class="grid">
+  <!-- ============ LEFT: inputs ============ -->
+  <div class="panel">
+    <h2>Object measurements</h2>
+    <div class="note">The five SDSS filter magnitudes and the spectroscopic redshift.</div>
+
+    <div class="presets" id="presets">
+      <button data-p="star">Typical star</button>
+      <button data-p="galaxy">Typical galaxy</button>
+      <button data-p="qso">Distant quasar</button>
+    </div>
+
+    <div class="frow"><label for="f_u">u</label><input type="number" id="f_u" step="0.01" value="19.50"></div>
+    <div class="frow"><label for="f_g">g</label><input type="number" id="f_g" step="0.01" value="18.00"></div>
+    <div class="frow"><label for="f_r">r</label><input type="number" id="f_r" step="0.01" value="17.10"></div>
+    <div class="frow"><label for="f_i">i</label><input type="number" id="f_i" step="0.01" value="16.70"></div>
+    <div class="frow"><label for="f_z">z</label><input type="number" id="f_z" step="0.01" value="16.40"></div>
+    <div class="frow"><label for="f_rs">redshift</label><input type="number" id="f_rs" step="0.0001" value="0.4500"></div>
+
+    <button class="cta" id="btnPredict">Classify object</button>
+
+    <div class="divider">or fetch live from SDSS</div>
+    <div class="sdssrow">
+      <div class="frow"><label for="f_ra">RA (deg)</label><input type="number" id="f_ra" step="0.0001" value="184.9511"></div>
+      <div class="frow"><label for="f_dec">Dec (deg)</label><input type="number" id="f_dec" step="0.0001" value="-0.8001"></div>
+      <button class="btn" id="btnSdss">Fetch object</button>
+    </div>
+    <div class="hint">Looks up the nearest spectroscopic object in SDSS DR17 (needs internet).
+      Find coordinates to try on the <a href="https://skyserver.sdss.org/dr17/VisualTools/navi" target="_blank" rel="noopener">SkyServer Navigate tool</a>.</div>
+    <div class="error" id="errBox"></div>
+  </div>
+
+  <!-- ============ RIGHT: verdict ============ -->
+  <div class="panel">
+    <div class="verdict">
+      <div class="what">Random Forest prediction</div>
+      <div class="cls" id="vClass">—</div>
+      <div class="conf" id="vConf">Set the measurements and classify.</div>
+      <div id="vProbs">
+        <div class="probrow"><span class="nm">GALAXY</span><div class="track"><div class="fill" id="pb0" style="background:var(--teal)"></div></div><span class="pv" id="pv0">–</span></div>
+        <div class="probrow"><span class="nm">QSO</span><div class="track"><div class="fill" id="pb1" style="background:var(--violet)"></div></div><span class="pv" id="pv1">–</span></div>
+        <div class="probrow"><span class="nm">STAR</span><div class="track"><div class="fill" id="pb2" style="background:var(--gold)"></div></div><span class="pv" id="pv2">–</span></div>
+      </div>
+      <div class="compare" id="cmpBox"></div>
+    </div>
+    <div class="meta">Backend: Flask · scikit-learn Random Forest (100 trees) loaded from <span style="font-family:'JetBrains Mono',monospace">model.pkl</span> ·
+      Colour indices (u−g, g−r, r−i, i−z) are computed server-side, then scaled with the training-set StandardScaler.</div>
+  </div>
+</div>
+
+<footer>Stellar Object Classification · Capstone Project · Data &amp; live lookups: Sloan Digital Sky Survey DR17</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const COLORS = {GALAXY:'var(--teal)', QSO:'var(--violet)', STAR:'var(--gold)'};
+const ORDER = ['GALAXY','QSO','STAR'];
+let lastSdssClass = null;   // SDSS's own label for the fetched object, if any
+
+const presets = {
+  star:   {u:18.50, g:17.20, r:16.70, i:16.50, z:16.40, rs:0.0001},
+  galaxy: {u:19.50, g:18.00, r:17.10, i:16.70, z:16.40, rs:0.4500},
+  qso:    {u:19.20, g:19.00, r:18.80, i:18.70, z:18.60, rs:1.8000},
+};
+$('presets').addEventListener('click', e => {
+  const p = presets[e.target.dataset.p];
+  if (!p) return;
+  setInputs(p);
+  lastSdssClass = null;
+  $('cmpBox').className = 'compare';
+  predict();
+});
+
+function setInputs(p){
+  $('f_u').value = p.u.toFixed(2); $('f_g').value = p.g.toFixed(2);
+  $('f_r').value = p.r.toFixed(2); $('f_i').value = p.i.toFixed(2);
+  $('f_z').value = p.z.toFixed(2); $('f_rs').value = p.rs.toFixed(4);
+}
+function readInputs(){
+  return { u:+$('f_u').value, g:+$('f_g').value, r:+$('f_r').value,
+           i:+$('f_i').value, z:+$('f_z').value, redshift:+$('f_rs').value };
+}
+function showError(msg){
+  const b = $('errBox'); b.textContent = msg; b.style.display = msg ? 'block' : 'none';
+}
+
+async function predict(){
+  showError('');
+  const btn = $('btnPredict');
+  const vals = readInputs();
+  if (Object.values(vals).some(v => Number.isNaN(v))) {
+    showError('Every field needs a numeric value before classifying.'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Classifying…';
+  try {
+    const r = await fetch('/predict', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(vals)});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Prediction failed.');
+    $('vClass').textContent = d.prediction;
+    $('vClass').style.color = COLORS[d.prediction];
+    $('vConf').textContent =
+      `${d.trees_voting} of ${d.n_trees} trees vote ${d.prediction} · probability ${(d.probabilities[d.prediction]*100).toFixed(1)}%`;
+    ORDER.forEach((c,i) => {
+      $('pb'+i).style.width = (d.probabilities[c]*100) + '%';
+      $('pv'+i).textContent = (d.probabilities[c]*100).toFixed(1) + '%';
+    });
+    const box = $('cmpBox');
+    if (lastSdssClass) {
+      const match = lastSdssClass === d.prediction;
+      box.className = 'compare ' + (match ? 'match' : 'diff');
+      box.textContent = match
+        ? `✓ SDSS also labels this object ${lastSdssClass} — the model agrees with the survey.`
+        : `SDSS labels this object ${lastSdssClass}, but the model predicts ${d.prediction} — one of the rare disagreements.`;
+    } else box.className = 'compare';
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Classify object';
+  }
+}
+$('btnPredict').addEventListener('click', predict);
+
+$('btnSdss').addEventListener('click', async () => {
+  showError('');
+  const btn = $('btnSdss');
+  const ra = +$('f_ra').value, dec = +$('f_dec').value;
+  if (Number.isNaN(ra) || Number.isNaN(dec)) { showError('RA and Dec need numeric values (degrees).'); return; }
+  btn.disabled = true; btn.textContent = 'Fetching…';
+  try {
+    const r = await fetch('/sdss_lookup', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ra, dec})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Lookup failed.');
+    setInputs({u:d.u, g:d.g, r:d.r, i:d.i, z:d.z, rs:d.redshift});
+    lastSdssClass = d.sdss_class;
+    await predict();
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Fetch object';
+  }
+});
+</script>
+</body>
+</html>
