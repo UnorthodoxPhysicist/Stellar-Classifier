@@ -1,0 +1,4 @@
+star_classification.csv
+__pycache__/
+*.pyc
+server.log
