@@ -1,4 +1,4 @@
-# Stellar Classifier — Live Prediction App
+# Stellar Object Classification using ML
 
 The trained Random Forest (97.97% test accuracy) served by a Flask backend,
 with a web UI for classifying objects on the spot — manually or fetched
